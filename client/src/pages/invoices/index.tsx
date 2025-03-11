@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { OrderTable } from "@/components/order/order-table";
 import { type PurchaseOrder, type SalesOrder } from "@shared/schema";
 
 export default function Invoices() {

@@ -29,27 +29,27 @@ export function OrderTable({ orders, type }: OrderTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>{type === "purchase" ? "Vendor" : "Customer"}</TableHead>
             <TableHead>Date</TableHead>
+            <TableHead>{type === "purchase" ? "Vendor" : "Customer"}</TableHead>
             <TableHead>Total</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-[70px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orders.map((order) => (
-            <TableRow key={order.id}>
-              <TableCell className="font-medium">{order.id}</TableCell>
-              <TableCell>{order.partyName}</TableCell>
+          {orders.map((order, index) => (
+            <TableRow key={index}>
               <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
+              <TableCell>{order.partyName}</TableCell>
               <TableCell>${order.total.toFixed(2)}</TableCell>
               <TableCell>
                 <Badge
-                  variant={order.status === "Approved" ? "success" : 
-                          order.status === "Pending" ? "warning" : 
-                          order.status === "Cancelled" ? "destructive" : 
-                          "default"}
+                  variant={
+                    order.status === "Approved" ? "default" :
+                    order.status === "Pending" ? "secondary" :
+                    order.status === "Cancelled" ? "destructive" :
+                    "outline"
+                  }
                 >
                   {order.status}
                 </Badge>
@@ -62,13 +62,13 @@ export function OrderTable({ orders, type }: OrderTableProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <Link href={`/invoices/${type}/${order.id}`}>
+                    <Link href={`/invoices/${type}/${index}`}>
                       <DropdownMenuItem>
                         <Eye className="mr-2 h-4 w-4" />
                         View
                       </DropdownMenuItem>
                     </Link>
-                    <Link href={`/invoices/${type}/${order.id}/edit`}>
+                    <Link href={`/invoices/${type}/${index}/edit`}>
                       <DropdownMenuItem>
                         <ClipboardEdit className="mr-2 h-4 w-4" />
                         Edit
