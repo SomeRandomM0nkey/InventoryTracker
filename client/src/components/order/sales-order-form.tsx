@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SalesOrderFormProps {
   onSubmit: (data: any) => void;
@@ -61,6 +62,14 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
       deliveryMethod: "",
       salesperson: "",
       warrantyStartDate: "",
+      shippingAddress: "",
+      billingAddress: "",
+      taxAmount: 0,
+      discountAmount: 0,
+      notes: "",
+      customerEmail: "",
+      customerPhone: "",
+      customerReference: "",
       items: [],
       status: "Draft",
       total: 0,
@@ -99,7 +108,10 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
   };
 
   const calculateTotal = (items: OrderItem[]) => {
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const taxAmount = form.getValues("taxAmount") || 0;
+    const discountAmount = form.getValues("discountAmount") || 0;
+    const total = subtotal + taxAmount - discountAmount;
     form.setValue("total", total);
   };
 
@@ -160,6 +172,22 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
 
           <FormField
             control={form.control}
+            name="customerReference"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Customer PO #</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
             name="date"
             render={({ field }) => (
               <FormItem>
@@ -171,9 +199,7 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
               </FormItem>
             )}
           />
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="expectedShipmentDate"
@@ -196,6 +222,80 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
                 <FormLabel>Warranty Start Date</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="shippingAddress"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Shipping Address</FormLabel>
+                <FormControl>
+                  <Textarea {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="billingAddress"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Billing Address</FormLabel>
+                <FormControl>
+                  <Textarea {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="customerEmail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Customer Email</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="customerPhone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Customer Phone</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="salesperson"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Salesperson</FormLabel>
+                <FormControl>
+                  <Input {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -254,20 +354,6 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="salesperson"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Salesperson</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
@@ -363,7 +449,53 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
           ))}
         </div>
 
-        <div className="flex justify-end">
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="taxAmount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tax Amount</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(Number(e.target.value));
+                      calculateTotal(orderItems);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="discountAmount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Discount Amount</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(Number(e.target.value));
+                      calculateTotal(orderItems);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="total"
@@ -384,6 +516,20 @@ export function SalesOrderForm({ onSubmit, isSubmitting }: SalesOrderFormProps) 
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end gap-4">
           <Button type="submit" disabled={isSubmitting || orderItems.length === 0}>

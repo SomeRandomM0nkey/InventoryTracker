@@ -42,6 +42,15 @@ export const salesOrderSchema = baseOrderSchema.extend({
   deliveryMethod: z.string(),
   salesperson: z.string(),
   warrantyStartDate: z.string().optional(),
+  // Additional Inflow-like fields
+  shippingAddress: z.string(),
+  billingAddress: z.string(),
+  taxAmount: z.number().min(0),
+  discountAmount: z.number().min(0),
+  notes: z.string().optional(),
+  customerEmail: z.string().email().optional(),
+  customerPhone: z.string().optional(),
+  customerReference: z.string().optional(),
 });
 
 // Purchase orders specific fields
@@ -52,8 +61,15 @@ export const purchaseOrderSchema = baseOrderSchema.extend({
   expectedDeliveryDate: z.string(),
   paymentTerms: z.string(),
   deliveryMethod: z.string(),
+  // Additional Inflow-like fields
+  vendorAddress: z.string(),
+  taxAmount: z.number().min(0),
+  discountAmount: z.number().min(0),
+  notes: z.string().optional(),
+  vendorContact: z.string().optional(),
+  vendorEmail: z.string().email().optional(),
+  vendorPhone: z.string().optional(),
 });
-
 
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -66,6 +82,15 @@ export const products = pgTable("products", {
   imageUrl: text("image_url").notNull(),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
   serialNumbers: text("serial_numbers").array().notNull().default([]),
+  // Additional Inflow-like fields
+  category: text("category"),
+  brand: text("brand"),
+  location: text("location"),
+  costPrice: decimal("cost_price", { precision: 10, scale: 2 }),
+  barcode: text("barcode"),
+  weight: decimal("weight", { precision: 10, scale: 2 }),
+  dimensions: text("dimensions"),
+  notes: text("notes"),
 });
 
 // Product schemas
@@ -76,6 +101,8 @@ export const insertProductSchema = createInsertSchema(products)
     quantity: z.number().int().min(0),
     reorderPoint: z.number().int().min(0),
     serialNumbers: z.array(z.string()),
+    costPrice: z.number().positive().optional(),
+    weight: z.number().positive().optional(),
   });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
