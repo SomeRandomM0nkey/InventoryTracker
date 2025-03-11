@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, type InsertProduct } from "@shared/schema";
@@ -21,6 +22,7 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFormProps) {
+  const [serialInput, setSerialInput] = useState("");
   const form = useForm<InsertProduct>({
     resolver: zodResolver(insertProductSchema),
     defaultValues: {
@@ -31,9 +33,20 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
       quantity: 0,
       reorderPoint: 10,
       imageUrl: getRandomImage(),
+      serialNumbers: [],
       ...defaultValues,
     },
   });
+
+  const handleSerialInput = () => {
+    const serials = serialInput
+      .split(/[\n,]/) // Split by newline or comma
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    form.setValue("serialNumbers", serials);
+    form.setValue("quantity", serials.length);
+  };
 
   return (
     <Form {...form}>
@@ -101,6 +114,26 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
           />
         </div>
 
+        <FormField
+          control={form.control}
+          name="serialNumbers"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Serial Numbers (one per line or comma-separated)</FormLabel>
+              <FormControl>
+                <Textarea 
+                  value={serialInput}
+                  onChange={(e) => setSerialInput(e.target.value)}
+                  onBlur={handleSerialInput}
+                  placeholder="Enter serial numbers here..."
+                  className="font-mono"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -112,7 +145,7 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    disabled
                   />
                 </FormControl>
                 <FormMessage />

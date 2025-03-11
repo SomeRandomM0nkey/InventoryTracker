@@ -1,0 +1,497 @@
+import './style.css';
+
+// Unified state management
+const state = {
+  inventory: JSON.parse(localStorage.getItem('inventory')) || [],
+  purchaseOrders: JSON.parse(localStorage.getItem('purchaseOrders')) || [],
+  salesOrders: JSON.parse(localStorage.getItem('salesOrders')) || [],
+  ORDER_STATUS: ['Draft', 'Pending', 'Approved', 'Completed', 'Cancelled']
+};
+
+// Core utility functions
+const saveState = (key) => localStorage.setItem(key, JSON.stringify(state[key]));
+const generateOrderId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+const calculateTotal = (items) => items.reduce((sum, {price, quantity}) => sum + price * quantity, 0);
+const formatDate = (date) => new Date(date).toLocaleDateString();
+
+// Main app initialization
+document.querySelector('#app').innerHTML = `
+  <div class="qb-container">
+    <aside class="sidebar">
+      <div class="company-logo">Inventory</div>
+      <nav class="side-nav">
+        <a class="nav-item active" data-page="dashboard"><i class="fas fa-home"></i>ㅤDashboard</a>
+        <a class="nav-item" data-page="inventory"><i class="fas fa-box"></i>ㅤInventory</a>
+        <a class="nav-item" data-page="purchase-order"><i class="fas fa-sync"></i>ㅤPurchase Order</a>
+        <a class="nav-item" data-page="sales-order"><i class="fas fa-sync"></i>ㅤSales Order</a>
+        <a class="nav-item" data-page="import-export"><i class="fas fa-file-alt"></i>ㅤImport/Export</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-bar">
+        <button id="newItemBtn" class="primary-btn">+ Add Item</button>
+      </header>
+
+      <div id="dashboard" class="page active">
+        <div class="dashboard-grid">
+          <div class="stats-card">
+            <h3>Total Value</h3>
+            <p class="value">$<span id="totalValue">0.00</span></p>
+          </div>
+          <div class="stats-card">
+            <h3>Total Items</h3>
+            <p class="value"><span id="totalItems">0</span></p>
+          </div>
+          <div class="stats-card">
+            <h3>Low Stock</h3>
+            <p class="value"><span id="lowStock">0</span></p>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>Inventory Distribution</h3>
+            <canvas id="itemsChart"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>Value by Item</h3>
+            <canvas id="valueChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div id="inventory" class="page">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Serial Numbers</th>
+              <th>Unit Price</th>
+              <th>Quantity</th>
+              <th>Total Value</th>
+              <th>Vendor Name</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryList"></tbody>
+        </table>
+      </div>
+
+      <div id="purchase-order" class="page">
+        <div class="po-container">
+          <div class="po-header">
+            <h2>Purchase Orders</h2>
+            <button id="newPOBtn" class="primary-btn">+ Create Purchase Order</button>
+          </div>
+          <table class="po-table">
+            <thead>
+              <tr>
+                <th>PO Number</th>
+                <th>Vendor</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="poList"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="sales-order" class="page">
+        <div class="so-container">
+          <div class="so-header">
+            <h2>Sales Orders</h2>
+            <button id="newSOBtn" class="primary-btn">+ Create Sales Order</button>
+          </div>
+          <table class="so-table">
+            <thead>
+              <tr>
+                <th>SO Number</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="soList"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="import-export" class="page">
+        <div class="import-export-container">
+          <div class="export-section">
+            <h2>Export Database</h2>
+            <p>Download your current inventory as a JSON file</p>
+            <button id="exportBtn" class="primary-btn">Export to JSON</button>
+          </div>
+          <div class="import-section">
+            <h2>Import Database</h2>
+            <p>Import inventory from another database</p>
+            <select id="importType" class="styled-select">
+              <option value="json">JSON Database</option>
+              <option value="csv">CSV Database</option>
+              <option value="excel">Excel Database</option>
+            </select>
+            <button id="importBtn" class="primary-btn">Import Database</button>
+            <input type="file" id="fileInput" accept=".json,.csv,.xlsx" style="display: none;">
+          </div>
+        </div>
+      </div>
+    </main>
+
+    ${generateModals()}
+  </div>
+`;
+
+// Modal templates
+function generateModals() {
+  return `
+    <div id="itemModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add New Item</h2>
+          <span class="close">&times;</span>
+        </div>
+        <form id="itemForm">
+          <div class="form-group">
+            <label>Item Name</label>
+            <input type="text" id="nameInput" required>
+          </div>
+          <div class="form-group">
+            <label>Unit Price</label>
+            <input type="number" id="priceInput" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Serial Numbers (one per line)</label>
+            <textarea id="serialInput" rows="4" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Vendor Name</label>
+            <input type="text" id="vendorInput" required>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="dateInput" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelBtn">Cancel</button>
+            <button type="submit" class="primary-btn">Save Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="orderModal" class="modal">
+      <div class="modal-content wide">
+        <div class="modal-header">
+          <h2 id="orderModalTitle">Create Order</h2>
+          <span class="close">&times;</span>
+        </div>
+        <form id="orderForm">
+          <div class="form-group">
+            <label id="partyLabel">Name</label>
+            <input type="text" id="partyNameInput" required>
+          </div>
+          <div class="form-group">
+            <label>Order Date</label>
+            <input type="date" id="orderDateInput" required>
+          </div>
+          <div class="items-section">
+            <h3>Items</h3>
+            <div id="orderItems"></div>
+            <button type="button" id="addItemBtn" class="secondary-btn">+ Add Item</button>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="cancelOrderBtn">Cancel</button>
+            <button type="submit" class="primary-btn">Save Order</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+// Event handlers
+document.addEventListener('DOMContentLoaded', () => {
+  initializeCharts();
+  attachEventListeners();
+  updateDisplay();
+});
+
+// Initialize charts
+function initializeCharts() {
+  const chartConfigs = {
+    itemsChart: { type: 'pie' },
+    valueChart: { type: 'bar' }
+  };
+
+  Object.entries(chartConfigs).forEach(([chartId, config]) => {
+    new Chart(document.getElementById(chartId), {
+      type: config.type,
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: ['#0066CC', '#4D94FF', '#99C2FF', '#CCE0FF']
+        }]
+      }
+    });
+  });
+}
+
+// Event listeners
+function attachEventListeners() {
+  // Navigation
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+      
+      const pageId = item.dataset.page;
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    });
+  });
+
+  // Forms
+  document.getElementById('itemForm').addEventListener('submit', handleItemSubmit);
+  document.getElementById('orderForm').addEventListener('submit', handleOrderSubmit);
+
+  // Buttons
+  document.getElementById('newItemBtn').addEventListener('click', () => showModal('item'));
+  document.getElementById('newPOBtn').addEventListener('click', () => showModal('order', 'purchase'));
+  document.getElementById('newSOBtn').addEventListener('click', () => showModal('order', 'sales'));
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', importData);
+
+  // Modal closes
+  document.querySelectorAll('.close, .secondary-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+    });
+  });
+}
+
+// Form handlers
+function handleItemSubmit(e) {
+  e.preventDefault();
+  const formData = {
+    name: document.getElementById('nameInput').value,
+    price: parseFloat(document.getElementById('priceInput').value),
+    serials: document.getElementById('serialInput').value.split('\n').filter(s => s.trim()),
+    vendor: document.getElementById('vendorInput').value,
+    date: document.getElementById('dateInput').value
+  };
+
+  const editIndex = e.target.dataset.editIndex;
+  if (editIndex !== undefined) {
+    state.inventory[editIndex] = formData;
+  } else {
+    state.inventory.push(formData);
+  }
+
+  saveState('inventory');
+  updateDisplay();
+  document.getElementById('itemModal').style.display = 'none';
+  e.target.reset();
+}
+
+function handleOrderSubmit(e) {
+  e.preventDefault();
+  const orderType = e.target.dataset.orderType;
+  const formData = {
+    id: generateOrderId(orderType === 'purchase' ? 'PO' : 'SO'),
+    partyName: document.getElementById('partyNameInput').value,
+    date: document.getElementById('orderDateInput').value,
+    items: getOrderItems(),
+    status: 'Draft'
+  };
+
+  state[`${orderType}Orders`].push(formData);
+  saveState(`${orderType}Orders`);
+  updateDisplay();
+  document.getElementById('orderModal').style.display = 'none';
+  e.target.reset();
+}
+
+// Display updates
+function updateDisplay() {
+  updateInventoryTable();
+  updateOrderTables();
+  updateDashboardStats();
+  updateCharts();
+}
+
+function updateInventoryTable() {
+  document.getElementById('inventoryList').innerHTML = state.inventory.map((item, index) => `
+    <tr>
+      <td>${item.name}</td>
+      <td>${item.serials.join(', ')}</td>
+      <td>$${item.price.toFixed(2)}</td>
+      <td>${item.serials.length}</td>
+      <td>$${(item.price * item.serials.length).toFixed(2)}</td>
+      <td>${item.vendor}</td>
+      <td>${item.date}</td>
+      <td>
+        <button onclick="editItem(${index})" class="action-btn edit">Edit</button>
+        <button onclick="deleteItem(${index})" class="action-btn delete">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updateOrderTables() {
+  ['purchase', 'sales'].forEach(type => {
+    const orders = state[`${type}Orders`];
+    document.getElementById(`${type === 'purchase' ? 'po' : 'so'}List`).innerHTML = orders.map(order => `
+      <tr>
+        <td>${order.id}</td>
+        <td>${order.partyName}</td>
+        <td>${formatDate(order.date)}</td>
+        <td>$${calculateTotal(order.items).toFixed(2)}</td>
+        <td><span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></td>
+        <td>
+          <button onclick="viewOrder('${order.id}', '${type}')" class="action-btn">View</button>
+          <button onclick="editOrder('${order.id}', '${type}')" class="action-btn edit">Edit</button>
+          <button onclick="deleteOrder('${order.id}', '${type}')" class="action-btn delete">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  });
+}
+
+function updateDashboardStats() {
+  const totalItems = state.inventory.reduce((sum, item) => sum + item.serials.length, 0);
+  const totalValue = state.inventory.reduce((sum, item) => sum + (item.price * item.serials.length), 0);
+  const lowStock = state.inventory.filter(item => item.serials.length < 5).length;
+
+  document.getElementById('totalItems').textContent = totalItems;
+  document.getElementById('totalValue').textContent = totalValue.toFixed(2);
+  document.getElementById('lowStock').textContent = lowStock;
+}
+
+function updateCharts() {
+  const labels = state.inventory.map(item => item.name);
+  const quantities = state.inventory.map(item => item.serials.length);
+  const values = state.inventory.map(item => item.price * item.serials.length);
+
+  const charts = {
+    itemsChart: {
+      labels,
+      data: quantities,
+      type: 'pie'
+    },
+    valueChart: {
+      labels,
+      data: values,
+      type: 'bar'
+    }
+  };
+
+  Object.entries(charts).forEach(([chartId, config]) => {
+    const chart = Chart.getChart(chartId);
+    if (chart) {
+      chart.data.labels = config.labels;
+      chart.data.datasets[0].data = config.data;
+      chart.update();
+    }
+  });
+}
+
+// Modal controls
+function showModal(type, orderType = null) {
+  const modal = document.getElementById(`${type}Modal`);
+  if (orderType) {
+    document.getElementById('orderForm').dataset.orderType = orderType;
+    document.getElementById('orderModalTitle').textContent = `Create ${orderType === 'purchase' ? 'Purchase' : 'Sales'} Order`;
+    document.getElementById('partyLabel').textContent = orderType === 'purchase' ? 'Vendor Name' : 'Customer Name';
+  }
+  modal.style.display = 'block';
+}
+
+// Import/Export functions
+function exportData() {
+  const data = JSON.stringify(state.inventory, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `inventory_${new Date().toISOString().split('T')[0]}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const importedData = JSON.parse(event.target.result);
+      state.inventory = [...state.inventory, ...importedData];
+      saveState('inventory');
+      updateDisplay();
+      showNotification('Import successful', 'success');
+    } catch (error) {
+      showNotification('Import failed', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Utility functions
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 3000);
+}
+
+// Make functions available globally
+window.editItem = (index) => {
+  const item = state.inventory[index];
+  const form = document.getElementById('itemForm');
+  form.dataset.editIndex = index;
+  Object.entries(item).forEach(([key, value]) => {
+    const input = document.getElementById(`${key}Input`);
+    if (input) {
+      input.value = Array.isArray(value) ? value.join('\n') : value;
+    }
+  });
+  showModal('item');
+};
+
+window.deleteItem = (index) => {
+  if (confirm('Are you sure you want to delete this item?')) {
+    state.inventory.splice(index, 1);
+    saveState('inventory');
+    updateDisplay();
+  }
+};
+
+window.viewOrder = (id, type) => {
+  const order = state[`${type}Orders`].find(o => o.id === id);
+  // Implement order view logic
+};
+
+window.editOrder = (id, type) => {
+  const order = state[`${type}Orders`].find(o => o.id === id);
+  // Implement order edit logic
+};
+
+window.deleteOrder = (id, type) => {
+  if (confirm('Are you sure you want to delete this order?')) {
+    state[`${type}Orders`] = state[`${type}Orders`].filter(o => o.id !== id);
+    saveState(`${type}Orders`);
+    updateDisplay();
+  }
+};
+
+// Initialize the application
+updateDisplay();

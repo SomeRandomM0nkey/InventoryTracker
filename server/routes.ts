@@ -1,9 +1,10 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertProductSchema } from "@shared/schema";
+import { insertProductSchema, purchaseOrderSchema, salesOrderSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express) {
+  // Product routes
   app.get("/api/products", async (_req, res) => {
     const products = await storage.getProducts();
     res.json(products);
@@ -48,6 +49,48 @@ export async function registerRoutes(app: Express) {
     const success = await storage.deleteProduct(id);
     if (!success) return res.status(404).json({ message: "Product not found" });
     res.status(204).send();
+  });
+
+  // Order routes
+  app.get("/api/orders/purchase", async (_req, res) => {
+    const orders = await storage.getPurchaseOrders();
+    res.json(orders);
+  });
+
+  app.get("/api/orders/sales", async (_req, res) => {
+    const orders = await storage.getSalesOrders();
+    res.json(orders);
+  });
+
+  app.post("/api/orders/purchase", async (req, res) => {
+    const result = purchaseOrderSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: result.error.message });
+    }
+    const order = await storage.createPurchaseOrder(result.data);
+    res.status(201).json(order);
+  });
+
+  app.post("/api/orders/sales", async (req, res) => {
+    const result = salesOrderSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: result.error.message });
+    }
+    const order = await storage.createSalesOrder(result.data);
+    res.status(201).json(order);
+  });
+
+  app.patch("/api/orders/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || typeof status !== "string") {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const order = await storage.updateOrderStatus(id, status);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    res.json(order);
   });
 
   const httpServer = createServer(app);
