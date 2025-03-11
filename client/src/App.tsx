@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/layout/navbar";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -28,13 +29,15 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main>
-          <Router />
-        </main>
-      </div>
-      <Toaster />
+      <ThemeProvider defaultTheme="light" storageKey="adora-theme">
+        <div className="min-h-screen bg-background">
+          <Navbar />
+          <main>
+            <Router />
+          </main>
+        </div>
+        <Toaster />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

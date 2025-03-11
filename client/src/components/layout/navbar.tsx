@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Package2, LayoutDashboard, Receipt } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Navbar() {
   return (
@@ -9,13 +10,16 @@ export function Navbar() {
           <div className="flex items-center">
             <Link href="/">
               <a className="text-xl font-bold flex items-center gap-2 text-white">
-                <Package2 className="h-6 w-6" />
-                <span>Inventory Manager</span>
+                <img
+                  src="https://adorapos.com/wp-content/uploads/2020/01/Blue-and-White-Adora-Horizontal-POS.png"
+                  alt="Adora POS"
+                  className="h-8"
+                />
               </a>
             </Link>
           </div>
 
-          <div className="flex gap-6">
+          <div className="flex items-center gap-6">
             <Link href="/">
               <a className="flex items-center gap-2 text-white hover:text-white/80">
                 <LayoutDashboard className="h-5 w-5" />
@@ -34,6 +38,7 @@ export function Navbar() {
                 <span>Invoices</span>
               </a>
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </div>
