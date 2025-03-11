@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getRandomImage } from "@/lib/constants";
+import { AlertCircle } from "lucide-react";
 
 interface ProductFormProps {
   defaultValues?: Partial<InsertProduct>;
@@ -23,6 +25,8 @@ interface ProductFormProps {
 
 export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFormProps) {
   const [serialInput, setSerialInput] = useState("");
+  const [duplicateSerials, setDuplicateSerials] = useState<string[]>([]);
+
   const form = useForm<InsertProduct>({
     resolver: zodResolver(insertProductSchema),
     defaultValues: {
@@ -44,13 +48,30 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
-    form.setValue("serialNumbers", serials);
-    form.setValue("quantity", serials.length);
+    // Check for duplicates
+    const seen = new Set<string>();
+    const duplicates = serials.filter(serial => {
+      if (seen.has(serial)) return true;
+      seen.add(serial);
+      return false;
+    });
+
+    setDuplicateSerials(duplicates);
+
+    if (duplicates.length === 0) {
+      form.setValue("serialNumbers", serials);
+      form.setValue("quantity", serials.length);
+    }
+  };
+
+  const handleSubmit = (data: InsertProduct) => {
+    if (duplicateSerials.length > 0) return;
+    onSubmit(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -129,6 +150,14 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
                   className="font-mono"
                 />
               </FormControl>
+              {duplicateSerials.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Duplicate serial numbers found: {duplicateSerials.join(", ")}
+                  </AlertDescription>
+                </Alert>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -172,7 +201,7 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting }: ProductFo
           />
         </div>
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || duplicateSerials.length > 0}>
           {isSubmitting ? "Saving..." : "Save Product"}
         </Button>
       </form>
