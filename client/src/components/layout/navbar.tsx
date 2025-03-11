@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Package2, LayoutDashboard } from "lucide-react";
+import { Package2, LayoutDashboard, Receipt } from "lucide-react";
 
 export function Navbar() {
   return (
@@ -26,6 +26,12 @@ export function Navbar() {
               <a className="flex items-center gap-2 text-white hover:text-white/80">
                 <Package2 className="h-5 w-5" />
                 <span>Products</span>
+              </a>
+            </Link>
+            <Link href="/invoices">
+              <a className="flex items-center gap-2 text-white hover:text-white/80">
+                <Receipt className="h-5 w-5" />
+                <span>Invoices</span>
               </a>
             </Link>
           </div>

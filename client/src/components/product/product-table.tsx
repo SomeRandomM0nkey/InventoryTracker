@@ -64,7 +64,7 @@ export function ProductTable({ products, onDelete }: ProductTableProps) {
               <TableRow key={product.id}>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.sku}</TableCell>
-                <TableCell>${product.price.toFixed(2)}</TableCell>
+                <TableCell>${Number(product.price).toFixed(2)}</TableCell>
                 <TableCell>{product.quantity}</TableCell>
                 <TableCell>
                   {product.quantity <= product.reorderPoint ? (
